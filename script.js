@@ -493,7 +493,7 @@ function updateTimer() {
 
     // 每5秒產生新的方塊
     if (seconds % 5 == 0) {
-        if ((seconds == 0 && milliseconds <= 100 ) || elapsedTime - lastPieceTime >= 4500) { // 每 5 秒才刷新一次
+        if ((seconds == 0 && milliseconds <= 90 ) || elapsedTime - lastPieceTime >= 4500) { // 每 5 秒才刷新一次
             createRandomPiece();
             lastPieceTime = elapsedTime; // 更新最後一次生成方塊的時間
         }
@@ -540,7 +540,7 @@ function startGameWithCountdown() {
             drawNumber(
                 numberMatrix[num], 
                 currentX, 
-                180, 
+                150, 
                 currentColorSet[index] || currentColorSet[0]
             );
             currentX += 5 * blockSize + spaceBetween;
