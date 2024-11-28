@@ -4,7 +4,7 @@ const ctx = canvas.getContext('2d');
 // 遊戲配置
 const BLOCK_SIZE = 30; // 方塊大小
 const BOARD_WIDTH = 12; // 遊戲區域寬度
-const BOARD_HEIGHT = 20; // 遊戲區域高度
+const BOARD_HEIGHT = 20+2; // 遊戲區域高度
 
 // 遊戲狀態變數
 let board = [];             // 遊戲區域
@@ -12,8 +12,9 @@ let gameInterval = null;    // 遊戲間隔
 let timerInterval;          // timer計時器
 let lastPieceTime = 0;      // 上一次生成方塊的時間
 
-let pieceList = [];
+let pieceList = [];         // 當前alive的方塊
 let currentPiece = null;    // 當前方塊
+let selectedPiece = null;   // 被選擇的方塊
 let currentPiece_index = 0; // 當前方塊
 let score = 0;              // 分數
 let gameSpeed = 1;          // 遊戲速度
@@ -165,109 +166,6 @@ class TetrisPiece {
         }
         return true;
     }
-
-    // 點擊開始--判斷是否有點選到current方塊
-    startDrag(event) {
-        // 首先检查方块状态+当前方块才能被拖拽
-        if (this.state != State.alive || !this.isCurrent) {
-            return;
-        }
-        const rect = canvas.getBoundingClientRect();
-        const mouseX = event.clientX - rect.left;
-        const mouseY = event.clientY - rect.top;
-
-        // 判斷鼠標是否在方塊內
-        const pieceStartX = this.x * BLOCK_SIZE;
-        const pieceStartY = this.y * BLOCK_SIZE;
-        const pieceEndX = pieceStartX + this.shape[0].length * BLOCK_SIZE;
-        const pieceEndY = pieceStartY + this.shape.length * BLOCK_SIZE;
-
-        // 如果鼠標不在當前方塊範圍內
-        if (mouseX < pieceStartX || mouseX > pieceEndX || mouseY < pieceStartY || mouseY > pieceEndY) {
-            return;
-        }
-        
-        this.state = State.selected;
-        // 計算滑鼠點擊位置相對於方塊的偏移
-        this.offsetX = Math.floor(mouseX / BLOCK_SIZE) - this.x;
-        this.offsetY = Math.floor(mouseY / BLOCK_SIZE) - this.y;
-    }
-
-    // 拖拽移动方法
-    drag(event) {
-        if (this.state != State.selected) return;
-
-        const rect = canvas.getBoundingClientRect();
-        const mouseX = event.clientX - rect.left;
-        const mouseY = event.clientY - rect.top;
-
-        // 计算新的方块位置
-        const newX = Math.floor(mouseX / BLOCK_SIZE) - this.offsetX;
-        const newY = Math.floor(mouseY / BLOCK_SIZE) - this.offsetY;
-
-        // 先暂存旧位置
-        const oldX = this.x;
-        const oldY = this.y;
-
-        // 更新方块位置
-        this.x = newX;
-        this.y = newY;
-
-        // 检查是否可以移动
-        if (!this.canMove(0, 0)) {
-            // 如果不能移动，恢复旧位置
-            this.x = oldX;
-            this.y = oldY;
-        }
-
-        // 检查是否与其他活动方块重叠
-        let isOverlap = false;
-        for (let piece of pieceList) {
-            // 排除当前方块自己进行重叠检查
-            if (piece !== this && piece.state === State.alive) {
-                // 遍历当前方块的每一格
-                for (let y = 0; y < this.shape.length; y++) {
-                    for (let x = 0; x < this.shape[0].length; x++) {
-                        if (!this.shape[y][x]) continue; // 跳过空白部分
-
-                        const globalX = newX + x;
-                        const globalY = newY + y;
-
-                        // 遍历其他方块的每一格
-                        for (let py = 0; py < piece.shape.length; py++) {
-                            for (let px = 0; px < piece.shape[0].length; px++) {
-                                if (!piece.shape[py][px]) continue; // 跳过空白部分
-
-                                // 如果有重叠，设置标志位并跳出
-                                if (globalX === piece.x + px && globalY === piece.y + py) {
-                                    //console.log("检测到重叠：", globalX, globalY, piece.x + px, piece.y + py); // 输出重叠位置
-                                    isOverlap = true;
-                                    break;
-                                }
-                            }
-                        }
-                    }
-                    if (isOverlap) break; // 已经找到重叠，跳出循环
-                }
-            }
-            if (isOverlap) break; // 已经找到重叠，跳出循环
-        }
-
-        // 如果有重叠，恢复旧位置并显示提示
-        if (isOverlap) {
-            //console.log("有重叠"); // 调试用
-            this.x = oldX;
-            this.y = oldY;
-        }
-
-        // 绘制更新后的画布
-        drawBoard();
-    }
-
-    // // 拖拽結束方法
-    endDrag() {
-        this.state = State.alive;
-    }
 }
 
 /*----------------------------創建/畫物件---------------------------------*/
@@ -307,14 +205,14 @@ function createRandomPiece() {
     const shape = SHAPES[shapeIndex];
     
     const newPiece = new TetrisPiece(shape);
+    // 長條方塊的初始位置
+    if(shapeIndex == 0) newPiece.y = 1;
     pieceList.push(newPiece);
-
     // 如果是第一個方塊，設為當前方塊
     if (currentPiece == null) {
         currentPiece = newPiece;
         currentPiece.isCurrent = true;
     }
-
     // 更新該形狀的計數
     shapeCount[shapeIndex]++;
     drawBoard(); // 更新畫面
@@ -325,7 +223,7 @@ function drawBoard() {
     
     // 繪製背景
     ctx.fillStyle = '#606060';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillRect(0, 2*BLOCK_SIZE, canvas.width, canvas.height);
 
     // 設置線條樣式，確保水平線和方塊的邊框一致
     ctx.lineWidth = 1;  // 設置線條寬度
@@ -333,13 +231,13 @@ function drawBoard() {
     // 繪製垂直線
     for (let x = 0; x <= canvas.width; x += BLOCK_SIZE) {
         ctx.beginPath();
-        ctx.moveTo(x, 0);
+        ctx.moveTo(x, 2*BLOCK_SIZE);
         ctx.lineTo(x, canvas.height);
         ctx.stroke();
     }
 
     // 繪製水平線
-    for (let y = 0; y <= canvas.height; y += BLOCK_SIZE) {
+    for (let y = 2*BLOCK_SIZE; y <= canvas.height; y += BLOCK_SIZE) {
         ctx.beginPath();
         ctx.moveTo(0, y);
         ctx.lineTo(canvas.width, y);
@@ -369,7 +267,7 @@ function drawBoard() {
         pieceList.forEach((piece) => {
             piece.draw(ctx, BLOCK_SIZE);
             // 如果方塊的狀態是 selected，添加紅色粗體邊框
-            if (piece.isCurrent || piece.state == State.selected) {
+            if (piece.state == State.selected) {
                 ctx.strokeStyle = 'red';  // 設置邊框顏色
                 // 畫出選中方塊的紅色邊框，並將邊框的位置向外偏移
                 ctx.strokeRect(
@@ -381,17 +279,18 @@ function drawBoard() {
             }
         });
     }
-    requestAnimationFrame(drawBoard);
 }
 
 /*----------------------------檢查功能---------------------------------*/
 function changeCurrent(index) {
+    if (index != currentPiece_index) return;
+
     // 如果還有方塊，將下一個方塊設為當前方塊
     if (index == currentPiece_index && pieceList.length > currentPiece_index+1) {
         currentPiece_index++;
         currentPiece = pieceList[currentPiece_index];
         currentPiece.isCurrent = true;
-        //console.log(currentPiece_index);
+        console.log(currentPiece_index);
     } else {
         currentPiece = null;  // 如果沒有更多方塊
     }
@@ -403,8 +302,16 @@ function mergePiece(piece) {
     piece.shape.forEach((row, dy) => {
         row.forEach((cell, dx) => {
             if (cell) {
+                const posY = piece.y + dy;
+                const posX = piece.x + dx;
+                // 如果方块超出天花板，直接结束游戏
+                if (checkGameOver(posY)) {
+                    drawBoard();
+                    endGame();
+                    return;
+                }
                 // 使用物件形式來存儲顏色
-                board[piece.y + dy][piece.x + dx] = { colors: piece.colors }; // 儲存顏色數組
+                board[posY][posX] = { colors: piece.colors }; // 儲存顏色數組
             }
         });
     });
@@ -412,8 +319,10 @@ function mergePiece(piece) {
     changeCurrent(index);
 }
 
-function checkGameOver() {
-    return board[0].some(cell => cell !== 0); // 檢查是否遊戲結束
+// 檢查是否遊戲結束
+function checkGameOver(posY) {
+    // 死亡方块超出天花板
+    return (posY<2)? true:false;
 }
 
 // 游戲循環
@@ -421,31 +330,32 @@ function gameLoop() {
     if (isGamePaused || isGameOver) return;
     
     let piecesToRemove = [];
+
     // 新游戲初始化
     if (gameInterval == null) {
         gameInterval = setInterval(gameLoop, 1000 / gameSpeed);
         startTimer();
-        startTime = new Date().getTime();
-        //createRandomPiece(); 
+        startTime = new Date().getTime(); 
         document.getElementById('startBtn').textContent = 'Playing';
     }
     
+    // step1：將不能移動的方塊，先merge，并且丟入piecesToRemove
     pieceList.forEach((piece) => {
-        if (piece.canMove(0, 1)){
-            piece.y++;
-        }
-        else{
-            piecesToRemove.push(piece);
+        if (!piece.canMove(0, 1)) {
             mergePiece(piece);
-            clearLines();
-            if (checkGameOver()) {
-                endGame();
-                return;
-            }
+            piecesToRemove.push(piece);
         }
     });
 
-    // 一次性刪除方塊(在循環中刪除元素會影響array的排序)
+    // step2：移動可以移動的方塊
+    pieceList.forEach((piece, index) => {
+        if (piece.canMove(0,1)) {
+            piece.y++; // 移動方塊
+        }
+    });
+
+    // step3:　清除已經無法移動的方塊，避免干擾
+    // 循環結束所有方塊，才一次性刪除方塊(在循環中刪除元素會影響array的排序)
     // 例如pieceList[a,b,c,d]，當a不能繼續移動，
     // 然後被刪掉了pieceList[a,b,c]，可是index已經=1了，就會直接檢查b
     piecesToRemove.forEach((piece) => {
@@ -455,9 +365,103 @@ function gameLoop() {
             pieceList.splice(index, 1);  // 刪除方塊
         }
     });
+
+    // step4：執行清行
+    clearLines();
+    
     // 更新currentPiece的index
+    piecesToRemove = [];
     currentPiece_index = 0;
     drawBoard();
+}
+
+// 方塊拖動開始
+function startDrag(event) {
+    if (isGamePaused || isGameOver) return;
+
+    const rect = canvas.getBoundingClientRect();
+    const mouseX = event.clientX - rect.left;
+    const mouseY = event.clientY - rect.top;
+
+    // 判斷鼠標是否點擊在某個方塊上
+    for (let piece of pieceList) {
+        if (piece.state !== State.alive) continue;
+
+        const pieceStartX = piece.x * BLOCK_SIZE;
+        const pieceStartY = piece.y * BLOCK_SIZE;
+        const pieceEndX = pieceStartX + piece.shape[0].length * BLOCK_SIZE;
+        const pieceEndY = pieceStartY + piece.shape.length * BLOCK_SIZE;
+
+        if (mouseX >= pieceStartX && mouseX <= pieceEndX && mouseY >= pieceStartY && mouseY <= pieceEndY) {
+            // 設置為選中狀態
+            selectedPiece = piece;
+            selectedPiece.state = State.selected;
+            selectedPiece.offsetX = Math.floor(mouseX / BLOCK_SIZE) - selectedPiece.x;
+            selectedPiece.offsetY = Math.floor(mouseY / BLOCK_SIZE) - selectedPiece.y;
+            return;
+        }
+    }
+}
+
+// 拖動方塊
+function drag(event) {
+    if (!selectedPiece || isGamePaused || isGameOver) return;
+
+    const rect = canvas.getBoundingClientRect();
+    const mouseX = event.clientX - rect.left;
+    const mouseY = event.clientY - rect.top;
+    // 計算新的位置
+    const newX = Math.floor(mouseX / BLOCK_SIZE) - selectedPiece.offsetX;
+    const newY = Math.floor(mouseY / BLOCK_SIZE) - selectedPiece.offsetY;
+    const oldX = selectedPiece.x;
+    const oldY = selectedPiece.y;
+
+    // 更新位置並檢查是否有效
+    selectedPiece.x = newX;
+    selectedPiece.y = newY;
+
+    if (!selectedPiece.canMove(0, 0) || checkOverlap(selectedPiece)) {
+        // 恢復舊位置
+        selectedPiece.x = oldX;
+        selectedPiece.y = oldY;
+    }
+
+    drawBoard();
+}
+
+// 拖動結束
+function endDrag() {
+    if (selectedPiece) {
+        selectedPiece.state = State.alive;
+        selectedPiece = null;
+    }
+}
+
+// 檢查是否與其他方塊重疊
+function checkOverlap(piece) {
+    for (let other of pieceList) {
+        if (other === piece || other.state !== State.alive) continue;
+
+        for (let y = 0; y < piece.shape.length; y++) {
+            for (let x = 0; x < piece.shape[0].length; x++) {
+                if (!piece.shape[y][x]) continue;
+
+                const globalX = piece.x + x;
+                const globalY = piece.y + y;
+
+                for (let py = 0; py < other.shape.length; py++) {
+                    for (let px = 0; px < other.shape[0].length; px++) {
+                        if (!other.shape[py][px]) continue;
+
+                        if (globalX === other.x + px && globalY === other.y + py) {
+                            return true;
+                        }
+                    }
+                }
+            }
+        }
+    }
+    return false;
 }
 
 function clearLines() {
@@ -493,7 +497,7 @@ function updateTimer() {
 
     // 每5秒產生新的方塊
     if (seconds % 5 == 0) {
-        if ((seconds == 0 && milliseconds <= 90 ) || elapsedTime - lastPieceTime >= 4500) { // 每 5 秒才刷新一次
+        if ((minutes == 0 && seconds == 0 && milliseconds <= 65 ) || elapsedTime - lastPieceTime >= 4800) { // 每 5 秒才刷新一次
             createRandomPiece();
             lastPieceTime = elapsedTime; // 更新最後一次生成方塊的時間
         }
@@ -511,13 +515,16 @@ function padMilliseconds(number) {
 }
 
 /*----------------------------進行游戲---------------------------------*/
+let countdownInterval = null;
 // 游戲開始倒數畫面
 function startGameWithCountdown() {
-    const blockSize = 20;
+    const blockSize = 30;
     const spaceBetween = 10;
     let x = -200;
     let currentColorSet = colorList[Math.floor(Math.random() * colorList.length)];
     let animationFrameId; // 用于存储动画帧ID
+    if(countdownInterval != null) clearInterval(countdownInterval);
+    let countdownValue = 3;
 
     function drawNumber(matrix, xOffset, yOffset, color) {
         ctx.fillStyle = color;
@@ -525,6 +532,13 @@ function startGameWithCountdown() {
             row.forEach((cell, x) => {
                 if (cell === 1) {
                     ctx.fillRect(xOffset + x * blockSize, yOffset + y * blockSize, blockSize, blockSize);
+                    ctx.strokeStyle = 'black';  // 設置邊框顏色
+                    ctx.strokeRect(
+                        xOffset + x * blockSize,
+                        yOffset + y * blockSize,
+                        blockSize,
+                        blockSize
+                    );
                 }
             });
         });
@@ -540,7 +554,7 @@ function startGameWithCountdown() {
             drawNumber(
                 numberMatrix[num], 
                 currentX, 
-                150, 
+                100, 
                 currentColorSet[index] || currentColorSet[0]
             );
             currentX += 5 * blockSize + spaceBetween;
@@ -551,16 +565,12 @@ function startGameWithCountdown() {
         x += 5;
 
         if (x > canvas.width) {
-            x = -200;
+            x = -500;
             currentColorSet = colorList[Math.floor(Math.random() * colorList.length)];
         }
-
         draw2024(x);
         animationFrameId = requestAnimationFrame(animate_2024);
     }
-
-    let countdownValue = 3;
-    let countdownInterval;
     
     // 顯示開場動畫
     document.getElementById('introScreen').style.display = 'flex';
@@ -586,6 +596,7 @@ function startGameWithCountdown() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             document.getElementById('introScreen').style.display = 'none';
             gameLoop();
+            newGame = false;
         }
     }, 1000);
 }
@@ -600,13 +611,12 @@ function startGame() {
 
     // 剛開始才需要創建新的方塊
     if (newGame == true){
-        newGame = false;
         startGameWithCountdown();
     }
     else{
         let now = new Date().getTime();
         pausedTime += now- pausedStartTime;
-        
+        //gameLoop();     // 先立馬恢復游戲
         gameInterval = setInterval(gameLoop, 1000 / gameSpeed); // 開始遊戲循環
         startTimer();
         document.getElementById('startBtn').textContent = 'Playing';
@@ -616,6 +626,8 @@ function startGame() {
 }
 
 function pauseGame() {
+    if (newGame) return;
+
     if(!isGamePaused) {
         clearInterval(timerInterval);
         clearInterval(gameInterval); // 暂停游戏循环
@@ -634,18 +646,22 @@ function restartGame() {
     
     clearInterval(gameInterval);
     clearInterval(timerInterval);
+
     initializeBoard();
+    pieceList = [];
+    currentPiece = null;
+    currentPiece_index = 0;
     score = 0;
     gameSpeed = 1;
     isGamePaused = true;
     isGameOver = false;
     newGame = true;
-    currentPiece = null;
     gameInterval = null;
     // 重置計時相關變數
+    startTime = 0;
     pausedTime = 0;
     pauseStartTime = 0;
-    pieceList = []
+    lastRotateTime = 0;
     lastPieceTime = 0;
 
     document.getElementById('startBtn').textContent = '▶';
@@ -659,6 +675,7 @@ function restartGame() {
 function endGame() {
     isGameOver = true;
     clearInterval(gameInterval);
+    clearInterval(timerInterval);
     
     const gameOverModal = document.getElementById('gameOverModal');
     const finalScoreEl = document.getElementById('finalScore');
@@ -733,33 +750,15 @@ document.addEventListener('keydown', (e) => {
 
             pieceList.splice(0, 1);         // 刪除方塊
             currentPiece_index = 0;         // 更新currentPiece的index
-
-            if (checkGameOver()) {
-                endGame(); // 遊戲結束
-            }
             break;
     }
     drawBoard();
 });
 
-// 鼠標
-canvas.addEventListener('mousedown', (event) => {
-    if (currentPiece && !isGamePaused && !isGameOver) {
-        currentPiece.startDrag(event);
-    }
-});
-
-canvas.addEventListener('mousemove', (event) => {
-    if (currentPiece && currentPiece.state == 1 && !isGamePaused && !isGameOver) {
-        currentPiece.drag(event);
-    }
-});
-
-canvas.addEventListener('mouseup', () => {
-    if (currentPiece) {
-        currentPiece.endDrag();
-    }
-});
+// 滑鼠事件監聽
+canvas.addEventListener('mousedown', startDrag);
+canvas.addEventListener('mousemove', drag);
+canvas.addEventListener('mouseup', endDrag);
 
 // Initial setup
 initializeBoard();
