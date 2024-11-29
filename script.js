@@ -43,25 +43,25 @@ const SHAPES = [
 // 2024
 const numberMatrix = {
     '2': [
-        [1, 1, 1, 1],
-        [0, 0, 0, 1],
-        [1, 1, 1, 1],
-        [1, 0, 0, 0],
-        [1, 1, 1, 1]
+        [1, 1, 1],
+        [0, 0, 1],
+        [1, 1, 1],
+        [1, 0, 0],
+        [1, 1, 1]
     ],
     '0': [
-        [1, 1, 1, 1],
-        [1, 0, 0, 1],
-        [1, 0, 0, 1],
-        [1, 0, 0, 1],
-        [1, 1, 1, 1]
+        [1, 1, 1],
+        [1, 0, 1],
+        [1, 0, 1],
+        [1, 0, 1],
+        [1, 1, 1]
     ],
     '4': [
-        [1, 0, 1, 0],
-        [1, 0, 1, 0],
-        [1, 1, 1, 1],
-        [0, 0, 1, 0],
-        [0, 0, 1, 0]
+        [1, 0, 1],
+        [1, 0, 1],
+        [1, 1, 1],
+        [0, 0, 1],
+        [0, 0, 1]
     ]
 };
 
@@ -96,17 +96,17 @@ class TetrisPiece {
     }
 
     // 繪製方法
-    draw(ctx, blockSize) {
+    draw(ctx) {
         for (let row = 0; row < this.shape.length; row++) {
             for (let col = 0; col < this.shape[row].length; col++) {
                 if (this.shape[row][col]) {
-                    const blockX = (this.x + col) * blockSize;
-                    const blockY = (this.y + row) * blockSize;
+                    const blockX = (this.x + col) * BLOCK_SIZE;
+                    const blockY = (this.y + row) * BLOCK_SIZE;
 
                     // 為當前方塊生成漸變
                     const gradient = ctx.createLinearGradient(
                         blockX, blockY, 
-                        blockX + blockSize, blockY + blockSize
+                        blockX + BLOCK_SIZE, blockY + BLOCK_SIZE
                     );
                     gradient.addColorStop(0, this.colors[0]);
                     gradient.addColorStop(0.5, this.colors[1]);
@@ -114,12 +114,12 @@ class TetrisPiece {
 
                     // 填充漸變
                     ctx.fillStyle = gradient;
-                    ctx.fillRect(blockX, blockY, blockSize, blockSize);
+                    ctx.fillRect(blockX, blockY, BLOCK_SIZE, BLOCK_SIZE);
 
                     // 繪製邊框
                     ctx.lineWidth = 2;
-                    ctx.strokeStyle = 'black';
-                    ctx.strokeRect(blockX, blockY, blockSize, blockSize);
+                    ctx.strokeStyle = 'grey';
+                    ctx.strokeRect(blockX, blockY, BLOCK_SIZE, BLOCK_SIZE);
                 }
             }
         }
@@ -218,33 +218,30 @@ function createRandomPiece() {
     drawBoard(); // 更新畫面
 }
 
-function drawBoard() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height); // 清除畫布
-    
-    // 繪製背景
-    ctx.fillStyle = '#606060';
-    ctx.fillRect(0, 2*BLOCK_SIZE, canvas.width, canvas.height);
-
-    // 設置線條樣式，確保水平線和方塊的邊框一致
+/*---------------------------- 繪製功能 ---------------------------------*/
+// 繪製網格線
+function drawLines() {
     ctx.lineWidth = 1;  // 設置線條寬度
-    ctx.strokeStyle = 'black';  // 設置線條顏色
+    ctx.strokeStyle = 'grey';  // 設置線條顏色
     // 繪製垂直線
-    for (let x = 0; x <= canvas.width; x += BLOCK_SIZE) {
+    for (let x = 0; x <= BLOCK_SIZE*BOARD_WIDTH; x += BLOCK_SIZE) {
         ctx.beginPath();
         ctx.moveTo(x, 2*BLOCK_SIZE);
-        ctx.lineTo(x, canvas.height);
+        ctx.lineTo(x, BLOCK_SIZE*BOARD_HEIGHT);
         ctx.stroke();
     }
 
     // 繪製水平線
-    for (let y = 2*BLOCK_SIZE; y <= canvas.height; y += BLOCK_SIZE) {
+    for (let y = 2*BLOCK_SIZE; y <= BLOCK_SIZE*BOARD_HEIGHT ; y += BLOCK_SIZE) {
         ctx.beginPath();
         ctx.moveTo(0, y);
-        ctx.lineTo(canvas.width, y);
+        ctx.lineTo(BLOCK_SIZE*BOARD_WIDTH, y);
         ctx.stroke();
     }
+}
 
-    // 繪製已經堆疊的方塊（死方塊）
+// 繪製死方塊
+function drawDeadBlocks() {
     board.forEach((row, y) => {
         row.forEach((cell, x) => {
             if (cell && Array.isArray(cell.colors)) {
@@ -253,19 +250,20 @@ function drawBoard() {
                 gradient.addColorStop(0, baseColor[0]);
                 gradient.addColorStop(0.5, baseColor[1]);
                 gradient.addColorStop(1, baseColor[2]);
-                
+
                 ctx.fillStyle = gradient;
                 ctx.fillRect(x * BLOCK_SIZE, y * BLOCK_SIZE, BLOCK_SIZE - 1, BLOCK_SIZE - 1);
-                // 繪製每個死方塊的邊框
-                ctx.strokeRect(x * BLOCK_SIZE, y * BLOCK_SIZE, BLOCK_SIZE - 1, BLOCK_SIZE - 1); 
+                ctx.strokeRect(x * BLOCK_SIZE, y * BLOCK_SIZE, BLOCK_SIZE - 1, BLOCK_SIZE - 1);
             }
         });
     });
+}
 
-    // 繪製當前所有alive的方塊
+// 繪製當前所有alive的方塊
+function drawPieces(pieceList) {
     if(pieceList[0] != null){
         pieceList.forEach((piece) => {
-            piece.draw(ctx, BLOCK_SIZE);
+            piece.draw(ctx);
             // 如果方塊的狀態是 selected，添加紅色粗體邊框
             if (piece.state == State.selected) {
                 ctx.strokeStyle = 'red';  // 設置邊框顏色
@@ -276,12 +274,36 @@ function drawBoard() {
                     BLOCK_SIZE * piece.shape[0].length + 4,  // 增加4像素的寬度
                     BLOCK_SIZE * piece.shape.length + 4   // 增加4像素的高度
                 );
+            }else if(piece.isCurrent) {
+                landingPiece = new TetrisPiece(piece.shape);
+                landingPiece.colors = piece.colors;
+                landingPiece.x = piece.x;
+                while (landingPiece.canMove(0,1)){
+                    landingPiece.y += 1;
+                }
+                ctx.globalAlpha = 0.25;
+                landingPiece.draw(ctx)
+                ctx.globalAlpha = 1;    // 恢復透明度
             }
         });
     }
 }
 
+function drawBoard() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height); // 清除畫布
+    
+
+    drawLines();
+    drawDeadBlocks();
+    drawPieces(pieceList);
+}
 /*----------------------------檢查功能---------------------------------*/
+// 檢查是否遊戲結束
+function checkGameOver(posY) {
+    // 死亡方块超出天花板
+    return (posY<2)? true:false;
+}
+
 function changeCurrent(index) {
     if (index != currentPiece_index) return;
 
@@ -295,6 +317,35 @@ function changeCurrent(index) {
         currentPiece = null;  // 如果沒有更多方塊
     }
 }
+
+// 檢查是否與其他方塊重疊
+function checkOverlap(piece) {
+    for (let other of pieceList) {
+        if (other === piece || other.state !== State.alive) continue;
+
+        for (let y = 0; y < piece.shape.length; y++) {
+            for (let x = 0; x < piece.shape[0].length; x++) {
+                if (!piece.shape[y][x]) continue;
+
+                const globalX = piece.x + x;
+                const globalY = piece.y + y;
+
+                for (let py = 0; py < other.shape.length; py++) {
+                    for (let px = 0; px < other.shape[0].length; px++) {
+                        if (!other.shape[py][px]) continue;
+
+                        if (globalX === other.x + px && globalY === other.y + py) {
+                            return true;
+                        }
+                    }
+                }
+            }
+        }
+    }
+    return false;
+}
+
+/*----------------------------游戲循環---------------------------------*/
 function mergePiece(piece) {
     piece.state = State.dead;
     piece.isCurrent = false;
@@ -304,25 +355,19 @@ function mergePiece(piece) {
             if (cell) {
                 const posY = piece.y + dy;
                 const posX = piece.x + dx;
+                // 使用物件形式來存儲顏色
+                board[posY][posX] = { colors: piece.colors };
                 // 如果方块超出天花板，直接结束游戏
                 if (checkGameOver(posY)) {
                     drawBoard();
                     endGame();
                     return;
                 }
-                // 使用物件形式來存儲顏色
-                board[posY][posX] = { colors: piece.colors }; // 儲存顏色數組
             }
         });
     });
     const index = pieceList.indexOf(piece);
     changeCurrent(index);
-}
-
-// 檢查是否遊戲結束
-function checkGameOver(posY) {
-    // 死亡方块超出天花板
-    return (posY<2)? true:false;
 }
 
 // 游戲循環
@@ -437,31 +482,9 @@ function endDrag() {
     }
 }
 
-// 檢查是否與其他方塊重疊
-function checkOverlap(piece) {
-    for (let other of pieceList) {
-        if (other === piece || other.state !== State.alive) continue;
-
-        for (let y = 0; y < piece.shape.length; y++) {
-            for (let x = 0; x < piece.shape[0].length; x++) {
-                if (!piece.shape[y][x]) continue;
-
-                const globalX = piece.x + x;
-                const globalY = piece.y + y;
-
-                for (let py = 0; py < other.shape.length; py++) {
-                    for (let px = 0; px < other.shape[0].length; px++) {
-                        if (!other.shape[py][px]) continue;
-
-                        if (globalX === other.x + px && globalY === other.y + py) {
-                            return true;
-                        }
-                    }
-                }
-            }
-        }
-    }
-    return false;
+// 更新分數
+function updateScore() {
+    document.getElementById('scorePanel').textContent = `Score: ${score}`; // 更新分數
 }
 
 function clearLines() {
@@ -479,12 +502,23 @@ function clearLines() {
     }
     updateScore();
 }
-// Start timer function
+/*---------------------------- 計時器 ---------------------------------*/
+// 啓動計時器
 function startTimer() {
     timerInterval = setInterval(updateTimer, 50); // 每50毫秒更新
 }
 
-// Update the timer
+// 分鐘和秒
+function pad(number) {
+    return number < 10 ? "0" + number : number;
+}
+
+// 毫秒
+function padMilliseconds(number) {
+    return number < 10 ? "00" + number : (number < 100 ? "0" + number : number);
+}
+
+// 更新計時器
 function updateTimer() {
     let elapsedTime = new Date().getTime() - startTime - pausedTime; // 減去累計的暫停時間
     let minutes = Math.floor(elapsedTime / 60000);
@@ -503,104 +537,7 @@ function updateTimer() {
         }
     }
 }
-
-// Pad single digit numbers with a leading zero
-function pad(number) {
-    return number < 10 ? "0" + number : number;
-}
-
-// Format milliseconds with three digits
-function padMilliseconds(number) {
-    return number < 10 ? "00" + number : (number < 100 ? "0" + number : number);
-}
-
-/*----------------------------進行游戲---------------------------------*/
-let countdownInterval = null;
-// 游戲開始倒數畫面
-function startGameWithCountdown() {
-    const blockSize = 30;
-    const spaceBetween = 10;
-    let x = -200;
-    let currentColorSet = colorList[Math.floor(Math.random() * colorList.length)];
-    let animationFrameId; // 用于存储动画帧ID
-    if(countdownInterval != null) clearInterval(countdownInterval);
-    let countdownValue = 3;
-
-    function drawNumber(matrix, xOffset, yOffset, color) {
-        ctx.fillStyle = color;
-        matrix.forEach((row, y) => {
-            row.forEach((cell, x) => {
-                if (cell === 1) {
-                    ctx.fillRect(xOffset + x * blockSize, yOffset + y * blockSize, blockSize, blockSize);
-                    ctx.strokeStyle = 'black';  // 設置邊框顏色
-                    ctx.strokeRect(
-                        xOffset + x * blockSize,
-                        yOffset + y * blockSize,
-                        blockSize,
-                        blockSize
-                    );
-                }
-            });
-        });
-    }
-
-    function draw2024(x) {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-        let currentX = x;
-        const numbers = ['2', '0', '2', '4'];
-        
-        numbers.forEach((num, index) => {
-            drawNumber(
-                numberMatrix[num], 
-                currentX, 
-                100, 
-                currentColorSet[index] || currentColorSet[0]
-            );
-            currentX += 5 * blockSize + spaceBetween;
-        });
-    }
-
-    function animate_2024() {
-        x += 5;
-
-        if (x > canvas.width) {
-            x = -500;
-            currentColorSet = colorList[Math.floor(Math.random() * colorList.length)];
-        }
-        draw2024(x);
-        animationFrameId = requestAnimationFrame(animate_2024);
-    }
-    
-    // 顯示開場動畫
-    document.getElementById('introScreen').style.display = 'flex';
-    let countdownText = document.getElementById('countdownText');
-    // 重置倒數值
-    countdownText.innerText = countdownValue;
-
-    // 启动2024动画
-    x = -200; // 重置x位置
-    animate_2024();
-
-    // 设定倒数动画
-    countdownInterval = setInterval(function() {
-        countdownValue--;
-        countdownText.innerText = countdownValue;
-
-        if (countdownValue < 0) {
-            clearInterval(countdownInterval);
-            if (animationFrameId) {
-                cancelAnimationFrame(animationFrameId);
-            }
-            
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            document.getElementById('introScreen').style.display = 'none';
-            gameLoop();
-            newGame = false;
-        }
-    }, 1000);
-}
-
+/*----------------------------游戲按鈕---------------------------------*/
 function startGame() {
     // 若游戲正在進行，點擊start button沒有作用
     if (!isGamePaused) return;
@@ -663,6 +600,7 @@ function restartGame() {
     pauseStartTime = 0;
     lastRotateTime = 0;
     lastPieceTime = 0;
+    shapeCount = { 0: 0, 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0 };
 
     document.getElementById('startBtn').textContent = '▶';
     document.getElementById('speedPanel').textContent = 'Speed: 1x';
@@ -670,6 +608,79 @@ function restartGame() {
     drawBoard();
 
     startGame(); // 重新開始遊戲
+}
+/*----------------------------游戲動畫---------------------------------*/
+// 游戲開始倒數畫面
+function startGameWithCountdown() {
+    const spaceBetween = 30;
+    let introPieces = [];
+    let countdownInterval = null;
+    let animationInterval = null;
+    let countdownValue = 3;
+
+    // Create TetrisPiece for each number in 2024
+    function createNumberPieces() {
+        const numbers = ['2', '0', '2', '4'];
+        introPieces = numbers.map((num, index) => {
+            const piece = new TetrisPiece(numberMatrix[num]);
+            // Position pieces off-screen to the right
+            piece.x = BOARD_WIDTH + index * (piece.shape[0].length + spaceBetween / BLOCK_SIZE);
+            piece.y = 4; // Vertical positioning
+            return piece;
+        });
+    }
+
+    function moveIntroAnimation() {
+        introPieces.forEach(piece => {
+            piece.x -= 1;
+            if (piece.x + piece.shape[0].length < 0) {
+                console.log("test");
+                piece.x = BOARD_WIDTH + (piece.shape[0].length + spaceBetween / BLOCK_SIZE);
+                // Randomize color when wrapping
+                const newColorSet = colorList[Math.floor(Math.random() * colorList.length)];
+                piece.colors = newColorSet;
+            }
+        });
+        drawIntroBoard();
+    }
+
+    function drawIntroBoard() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height); // 清除畫布
+        
+        drawLines();
+        drawPieces(introPieces);
+    }
+
+    // Start game countdown
+    function startCountdown() {
+        document.getElementById('introScreen').style.display = 'flex';
+        let countdownText = document.getElementById('countdownText');
+        countdownText.innerText = countdownValue;
+
+        countdownInterval = setInterval(() => {
+            countdownValue--;
+            countdownText.innerText = countdownValue;
+
+            if (countdownValue < 0) {
+                clearInterval(countdownInterval);
+                clearInterval(animationInterval);
+                
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                document.getElementById('introScreen').style.display = 'none';
+                gameLoop();
+                newGame = false;
+            }
+        }, 1000);
+    }
+
+    // Initialize and start intro animation
+    function initIntroAnimation() {
+        createNumberPieces();
+        animationInterval = setInterval(moveIntroAnimation, 100);
+        startCountdown();
+    }
+
+    initIntroAnimation();
 }
 
 function endGame() {
@@ -682,11 +693,6 @@ function endGame() {
     
     finalScoreEl.textContent = `Final Score: ${score}`;
     gameOverModal.style.display = 'flex'; // 顯示結束畫面
-}
-
-// 更新分數
-function updateScore() {
-    document.getElementById('scorePanel').textContent = `Score: ${score}`; // 更新分數
 }
 
 /*----------------------------------操作----------------------------------*/

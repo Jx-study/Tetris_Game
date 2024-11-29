@@ -10,24 +10,41 @@
             display: flex;
             flex-direction: column;
             align-items: center;
-            background-color: #000;
+            background: linear-gradient(270deg, #ff7eb3, #8c5eff, #3eb5ff, #ffcc70);
+            background-size: 400% 400%;
+            animation: gradientAnimation 8s ease infinite;
             margin: 0;
             padding: 20px;
             position: relative; /* 設置為相對於body */
         }
 
+        @keyframes gradientAnimation {
+            0% {
+                background-position: 0% 50%;
+            }
+            50% {
+                background-position: 100% 50%;
+            }
+            100% {
+                background-position: 0% 50%;
+            }
+        }
+
         h1 {
-            color: aqua;
+            color: white;
         }
         .game-container {
             position: relative; /* 使得 introScreen 定位於此容器 */
             display: flex;
+            justify-content: center; /* 水平居中 */
             align-items: center;
+            height: 100%;
             gap: 20px;
         }
         #gameCanvas {
-            border: 2px solid #000000;
-            background-color: #606060;
+            border: 2px solid #FFF;
+            border-radius: 2%;
+            background-color: #000;
         }
         .controls {
             display: flex;
@@ -58,15 +75,16 @@
 
         #introScreen {
             display: none; /* 預設不顯示 */
-            position: absolute; /* 絕對定位 */
-            top: 0; 
-            left: 0; 
-            width: 364px; 
-            height: 664px;
+            position: absolute; /* 相對於game-container的絕對定位 */
+            top: 300px; 
+            left: 2px; 
+            width: 359px; 
+            height: 100px;
+            border-radius: 2%;
             background-color: rgba(0, 0, 0, 0.7); /* 半透明背景 */
-            z-index: 1000;
-            justify-content: center;
-            align-items: center;
+            z-index: 1000;              /* 確保其在其他元素上層 */
+            justify-content: center;    /* 水平居中內部文字 */
+            align-items: center;        /* 垂直居中內部文字 */
             font-size: 50px;
             color: #fff;
             font-family: Arial, sans-serif;
