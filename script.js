@@ -274,7 +274,8 @@ function drawPieces(pieceList) {
                     BLOCK_SIZE * piece.shape[0].length + 4,  // 增加4像素的寬度
                     BLOCK_SIZE * piece.shape.length + 4   // 增加4像素的高度
                 );
-            }else if(piece.isCurrent) {
+            }
+            if(piece.isCurrent) {
                 landingPiece = new TetrisPiece(piece.shape);
                 landingPiece.colors = piece.colors;
                 landingPiece.x = piece.x;
