@@ -279,6 +279,7 @@ function drawPieces(pieceList) {
                 landingPiece = new TetrisPiece(piece.shape);
                 landingPiece.colors = piece.colors;
                 landingPiece.x = piece.x;
+                landingPiece.y = piece.y;
                 while (landingPiece.canMove(0,1)){
                     landingPiece.y += 1;
                 }
