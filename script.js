@@ -74,9 +74,9 @@ const colorList = [
     ['#FF7F7F', '#FFD700', '#ADFF2F'], // 漸變1：紅 -> 黃 -> 綠
     ['#87CEFA', '#6A5ACD', '#4B0082'], // 漸變2：淺藍 -> 紫 -> 靛藍
     ['#FF4500', '#FF6347', '#FFDAB9'], // 漸變3：橘紅 -> 粉紅 -> 淺黃
-    ['#7FFFD4', '#40E0D0', '#1E90FF'],  // 漸變4：水藍 -> 青綠 -> 深藍
-    ['#A6C0FE', '#f68084', '#FFF'],
-    ['#fed6e3','#a8edea', '#FFF']
+    ['#7FFFD4', '#40E0D0', '#1E90FF'], // 漸變4：水藍 -> 青綠 -> 深藍
+    ['#A6C0FE', '#F68084', '#FFF'],    // 漸變5：藍灰 -> 紅灰 -> 白
+    ['#FED6E3','#A8EDEA', '#FFF']      // 漸變6：粉 -> 青藍 -> 白
 ];
 
 const State = Object.freeze({
@@ -89,8 +89,7 @@ class TetrisPiece {
     constructor(shape) {
         this.shape = shape;
         // 隨機漸變顏色
-        const colorSet = colorList[Math.floor(Math.random() * colorList.length)];
-        this.colors = colorSet;
+        this.colors = colorList[Math.floor(Math.random() * colorList.length)];
         this.state = State.alive;
         this.x = Math.floor((BOARD_WIDTH - shape[0].length) / 2);
         this.y = 0;
@@ -193,7 +192,7 @@ function createRandomPiece() {
     // 找出可以被選擇的形狀索引
     let availableIndices = [];
     for (let i = 0; i < SHAPES.length; i++) {
-        if (shapeCount[i] < 2) {
+        if (shapeCount[i] < 1) {
             availableIndices.push(i);  // 如果形狀出現少於兩次，則加入可用形狀列表
         }
     }
@@ -641,8 +640,7 @@ function startGameWithCountdown() {
             piece.x -= 1;
             if (piece.x + piece.shape[0].length < 0) {
                 piece.x = BOARD_WIDTH + (piece.shape[0].length + spaceBetween / BLOCK_SIZE);
-                const newColorSet = colorList[Math.floor(Math.random() * colorList.length)];
-                piece.colors = newColorSet;
+                piece.colors = colorList[Math.floor(Math.random() * colorList.length)];
             }
         });
         drawIntroBoard();
