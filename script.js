@@ -29,6 +29,10 @@ let pausedStartTime = 0;    // 按暫停的時間
 let lastRotateTime = 0;
 const ROTATE_COOLDOWN = 100;
 
+let introPieces = [];
+let countdownInterval = null;
+let animationInterval = null;
+
 // 標準俄羅斯方塊
 const SHAPES = [
     [[1,1,1,1]], // I 塊
@@ -314,7 +318,6 @@ function changeCurrent(index) {
         currentPiece_index++;
         currentPiece = pieceList[currentPiece_index];
         currentPiece.isCurrent = true;
-        console.log(currentPiece_index);
     } else {
         currentPiece = null;  // 如果沒有更多方塊
     }
@@ -467,7 +470,7 @@ function drag(event) {
     selectedPiece.x = newX;
     selectedPiece.y = newY;
 
-    if (!selectedPiece.canMove(0, 0) || checkOverlap(selectedPiece)) {
+    if (selectedPiece.y < 2 || !selectedPiece.canMove(0, 0) || checkOverlap(selectedPiece)) {
         // 恢復舊位置
         selectedPiece.x = oldX;
         selectedPiece.y = oldY;
@@ -582,9 +585,11 @@ function pauseGame() {
 
 function restartGame() {
     gameOverModal.style.display = 'none'; // 隱藏結束畫面
-    
-    clearInterval(gameInterval);
-    clearInterval(timerInterval);
+   // 清理所有計時器
+   clearInterval(gameInterval);
+   clearInterval(timerInterval);
+   clearInterval(countdownInterval);
+   clearInterval(animationInterval);
 
     initializeBoard();
     pieceList = [];
@@ -603,6 +608,10 @@ function restartGame() {
     lastRotateTime = 0;
     lastPieceTime = 0;
     shapeCount = { 0: 0, 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0 };
+    
+    introPieces = [];
+    countdownInterval = null;
+    animationInterval = null;
 
     document.getElementById('startBtn').textContent = '▶';
     document.getElementById('speedPanel').textContent = 'Speed: 1x';
@@ -615,19 +624,14 @@ function restartGame() {
 // 游戲開始倒數畫面
 function startGameWithCountdown() {
     const spaceBetween = 30;
-    let introPieces = [];
-    let countdownInterval = null;
-    let animationInterval = null;
     let countdownValue = 3;
 
-    // Create TetrisPiece for each number in 2024
     function createNumberPieces() {
         const numbers = ['2', '0', '2', '4'];
         introPieces = numbers.map((num, index) => {
             const piece = new TetrisPiece(numberMatrix[num]);
-            // Position pieces off-screen to the right
             piece.x = BOARD_WIDTH + index * (piece.shape[0].length + spaceBetween / BLOCK_SIZE);
-            piece.y = 4; // Vertical positioning
+            piece.y = 4; 
             return piece;
         });
     }
@@ -636,9 +640,7 @@ function startGameWithCountdown() {
         introPieces.forEach(piece => {
             piece.x -= 1;
             if (piece.x + piece.shape[0].length < 0) {
-                console.log("test");
                 piece.x = BOARD_WIDTH + (piece.shape[0].length + spaceBetween / BLOCK_SIZE);
-                // Randomize color when wrapping
                 const newColorSet = colorList[Math.floor(Math.random() * colorList.length)];
                 piece.colors = newColorSet;
             }
@@ -647,7 +649,7 @@ function startGameWithCountdown() {
     }
 
     function drawIntroBoard() {
-        ctx.clearRect(0, 0, canvas.width, canvas.height); // 清除畫布
+        ctx.clearRect(0, 0, canvas.width, canvas.height); 
         
         drawLines();
         drawPieces(introPieces);
@@ -734,6 +736,7 @@ function speedDown() {
 
 // 键盘控制
 document.addEventListener('keydown', (e) => {
+    e.preventDefault();     // 防止頁面滾動
     if (isGamePaused || isGameOver || !currentPiece) return;
 
     switch (e.code) {
@@ -744,6 +747,7 @@ document.addEventListener('keydown', (e) => {
             if (currentPiece.canMove(1, 0)) currentPiece.x++;
             break;
         case 'ArrowDown':
+            
             if (currentPiece.canMove(0, 1)) currentPiece.y++;
             break;
         case 'ArrowUp':
@@ -767,6 +771,23 @@ document.addEventListener('keydown', (e) => {
 canvas.addEventListener('mousedown', startDrag);
 canvas.addEventListener('mousemove', drag);
 canvas.addEventListener('mouseup', endDrag);
+
+// 手機
+// canvas.addEventListener('touchstart', function(e) {
+//     // 防止頁面滾動
+//     e.preventDefault();
+
+//     // 獲取觸摸坐標
+//     const touch = e.touches[0];
+//     startX = touch.pageX;
+//     startY = touch.pageY;
+
+//     // 记录开始拖拽
+//     isDragging = true;
+// });
+
+// canvas.addEventListener('mousemove', drag);
+// canvas.addEventListener('mouseup', endDrag);
 
 // Initial setup
 initializeBoard();

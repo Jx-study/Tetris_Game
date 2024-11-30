@@ -39,10 +39,10 @@
             justify-content: center; /* 水平居中 */
             align-items: center;
             height: 100%;
-            gap: 20px;
+            gap: 20px;          /* 让canva和button之间有空隙 */
         }
         #gameCanvas {
-            border: 2px solid #FFF;
+            border: 3px solid #FFF;
             border-radius: 2%;
             background-color: #000;
         }
@@ -161,7 +161,16 @@
             <button type="button" id="restartBtn" onclick="restartGame()">Restart Game</button>
         </div>
     </div>
-
+    <script>
+        document.addEventListener('click', (event) => {
+            const target = event.target;
+            if (target.type === 'button') {
+                target.blur();  // 取消按钮的焦点
+            }
+        });
+    </script>
     <script src="script.js"></script>
+    
+
 </body>
 </html>
